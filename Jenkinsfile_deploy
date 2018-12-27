@@ -1,0 +1,101 @@
+pipeline {
+    agent any
+    environment {
+        BRANCH_TO_DEPLOY = "develop"
+        RELEASE_NUMBER = "0"
+        ARTIFACTS = ''
+    }
+    parameters {
+        string(name: 'PARENT_JOB', defaultValue: "", description: 'Leave blank if you want to execute manually', trim: true)
+        string(name: 'REF_BUILD_NUMBER', defaultValue: "", description: 'Leave blank if you want to execute manually', trim: true)
+        string(name: 'ARTIFACT_TO_DEPLOY', defaultValue: "", description: 'Use with caution or leave blank', trim: true)
+    }
+    stages {
+        stage('Get Branch') {
+            steps {
+                echo "Upstream job: $PARENT_JOB"
+                echo "Setting environment variables"
+                //load "environment.${JOB_NAME.substring(JOB_NAME.indexOf('/')+1)[0..-8]}.groovy"
+                cleanWs()
+                script {
+                    if (params.PARENT_JOB == "" && ARTIFACT_TO_DEPLOY == "") {
+                        BRANCH_TO_DEPLOY = input (message: 'Branch to deploy:', parameters: [choice (choices: ["develop","feature","release"], description: 'Git-flow official branches', name: 'BRANCH_TO_DEPLOY')])
+                        echo "Branch to deploy from: ${BRANCH_TO_DEPLOY}"
+                    }
+                    if (BRANCH_TO_DEPLOY == "release") {
+                        RELEASE_NUMBER = input (message: 'Release number:', parameters: [string(defaultValue: '0', description: 'Release number to deploy:', name: 'RELEASE_NUMBER', trim: true)])
+                        echo "Release number to deploy: ${RELEASE_NUMBER}"
+                    }
+                    if (params.REF_BUILD_NUMBER != "") {
+                        LAST_BUILD_NUMBER = params.REF_BUILD_NUMBER
+                    }
+                    echo "Downloading artifacts"
+                }
+            }
+        }
+        stage('Deploy'){
+            when {
+                beforeAgent true
+                expression {
+                    "True" == "True"
+                }
+            }
+            parallel {
+                stage('Deploy into Zone 1') {
+                    options { skipDefaultCheckout() }
+                    agent any
+                    steps {
+                        echo "Deploying into Zone 1"
+                        cleanWs()
+                    }
+                }
+                stage('Deploy into Zone 2') {
+                    options { skipDefaultCheckout() }
+                    agent any
+                    steps {
+                        echo "Deploying into Zone 2"
+                        cleanWs()
+                    }
+                }
+            }
+        }
+        stage('CMDB') {
+            options { skipDefaultCheckout() }
+            agent any
+            when {
+                beforeAgent true
+                expression {
+                    "True" == "True"
+                }
+            }
+            steps {
+                echo "Deployment recorded on DevOps CMDB"
+                cleanWs()
+            }
+        }
+    }
+    post {
+        always {
+            echo 'I have finished. Cleaning workspace ...'
+            deleteDir()
+        }
+        success {
+            echo 'Success!'
+        }
+        failure {
+            echo 'I failed :(. Send notifications ...'
+        }
+        unstable {
+            echo 'I am unstable :D'
+        }
+        changed {
+            echo 'Things are different...'
+        }
+    }
+    options {
+        // We only keep last xx builds at a time, so we don't fill up our storage!
+        buildDiscarder(logRotator(numToKeepStr:'10'))
+        // Max execution of 60 minutes for the job not hanging forever.
+        timeout(time: 60, unit: 'MINUTES')
+    }
+}
