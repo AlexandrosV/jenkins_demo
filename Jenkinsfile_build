@@ -24,7 +24,7 @@ pipeline {
                 // build job: "${JOB_REF}_tests", wait: false, propagate: false, parameters: [
                 //     string(name: 'BRANCH_CM', value: "${BRANCH_CM}"),
                 //     string(name: 'PARENT_JOB', value: "${JOB_NAME}")
-                ]
+                //]
             }
         }
         stage('Build') {
