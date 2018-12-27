@@ -28,12 +28,12 @@ pipeline {
             }
         }
         stage('Build') {
-            agent {
-                docker {
-                    image 'hello-world'
-                    args  '-u root'
-                }
-            }
+            // agent {
+            //     docker {
+            //         image 'hello-world'
+            //         args  '-u root'
+            //     }
+            // }
             steps {
                 echo "Building repository..."
                 echo 'Cleaning workspace ...'
