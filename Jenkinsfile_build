@@ -31,7 +31,6 @@ pipeline {
             agent {
                 docker {
                     image 'hello-world'
-                    label 'Linux'
                     args  '-u root'
                 }
             }
