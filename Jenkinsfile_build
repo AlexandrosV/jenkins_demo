@@ -1,0 +1,92 @@
+pipeline {
+    agent { any }
+    environment {
+        FILENAME = "" // for keeping as env the ARTIFACT_TO_DEPLOY
+        DEPLOY = "NO" // for keeping as env to auto deploy or not
+    }
+    parameters {
+        string(name: 'PARENT_JOB', defaultValue: "", description: 'Leave blank if you want to execute the Test stage', trim: true)
+        string(name: 'BRANCH_CM', defaultValue: "develop", description: 'Please specify the branch for build', trim: true)
+        choice(name: 'DEPLOY', choices: ['NO','YES'], description: 'Select if this needs automatic deployment to this ENV')
+    }
+    stages {
+        stage('Smoke Testing') {
+            options { skipDefaultCheckout() }
+            when {
+                beforeAgent true
+                environment name: 'PARENT_JOB', value: ''
+            }
+            steps {
+                echo "Job name: $JOB_NAME and the branch used: $BRANCH_CM"
+                echo "Setting environment variables"
+                //load "environment.${JOB_NAME.substring(JOB_NAME.indexOf('/')+1)}.groovy"
+                echo "Running Smoke Test pipeline"
+                // build job: "${JOB_REF}_tests", wait: false, propagate: false, parameters: [
+                //     string(name: 'BRANCH_CM', value: "${BRANCH_CM}"),
+                //     string(name: 'PARENT_JOB', value: "${JOB_NAME}")
+                ]
+            }
+        }
+        stage('Build') {
+            agent {
+                docker {
+                    image 'hello-world'
+                    label 'Linux'
+                    args  '-u root'
+                }
+            }
+            steps {
+                echo "Building repository..."
+                echo 'Cleaning workspace ...'
+                cleanWs()
+            }
+        }
+        stage('Archive') {
+            options { skipDefaultCheckout() }
+            agent { label any }
+            steps{
+                echo 'Store artifacts in JFrog Artifactory'
+                echo 'Cleaning workspace ...'
+                cleanWs()
+            }
+        }
+        stage ('Deploy for develop') {
+            when {
+                beforeAgent true
+                anyOf {
+                    environment name: 'BRANCH_CM', value: 'develop'
+                }
+            }
+            steps {
+                echo 'Deploy to Development environment'
+            }
+
+        }
+
+    }
+    post {
+        always {
+            echo 'I have finished. Cleaning workspace ...'
+            deleteDir()
+        }
+        success {
+            echo 'Success!'
+        }
+        failure {
+            echo 'I failed :(. Send notifications ...'
+        }
+        unstable {
+            echo 'I am unstable :D'
+        }
+        changed {
+            echo 'Things are different...'
+        }
+    }
+    // The options directive is for configuration that applies to the whole job.
+    options {
+        // We only keep last xx builds at a time, so we don't fill up our storage!
+        buildDiscarder(logRotator(numToKeepStr:'10'))
+        // Max execution of 60 minutes for the job not hanging forever.
+        timeout(time: 60, unit: 'MINUTES')
+    }
+}
