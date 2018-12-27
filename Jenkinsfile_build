@@ -1,5 +1,5 @@
 pipeline {
-    agent { any }
+    agent any
     environment {
         FILENAME = "" // for keeping as env the ARTIFACT_TO_DEPLOY
         DEPLOY = "NO" // for keeping as env to auto deploy or not
@@ -43,8 +43,8 @@ pipeline {
         }
         stage('Archive') {
             options { skipDefaultCheckout() }
-            agent { label any }
-            steps{
+            agent any
+            steps {
                 echo 'Store artifacts in JFrog Artifactory'
                 echo 'Cleaning workspace ...'
                 cleanWs()
